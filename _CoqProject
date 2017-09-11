@@ -2,4 +2,6 @@
 Adjointification.v
 FunctionExtensionality.v
 IWType.v
+SigmaEta.v
+ReduceIWtoW.v
 
