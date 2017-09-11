@@ -4,4 +4,5 @@ FunctionExtensionality.v
 IWType.v
 SigmaEta.v
 ReduceIWtoW.v
+CharacterizeIWEquality.v
 

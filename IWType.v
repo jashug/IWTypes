@@ -142,4 +142,5 @@ assuming that coherence of induct_computes doesn't mess things up.
 *)
 
 End concrete.
+Arguments IWsup {S} x children.
 End concrete.
