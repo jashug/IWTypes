@@ -20,30 +20,23 @@ Close Scope nat_scope.
 
 Section IWEquality.
 Context {FunExt : FunExt}.
-Context (S : spec).
+Context {S : spec}.
 
-(*
-All implementations of S are equivalent, and thus so are their equalities.
-We will work with the concrete inductive definition IW because it has nice
-definitional equalities.
-*)
-Definition T : Index S -> Type := IWType.concrete.IW S.
+(* Postulate an implementation I of S *)
+Context {I : impl S} (satSI : sat S I).
 
 (* Define the type of children of a node labeled by x *)
-Definition children_for (x : Data S) := forall c, T (child_index x c).
-
-Definition sup : forall x, children_for x -> T (index x)
-  := IWType.concrete.IWsup.
+Definition children_for (x : Data S) := forall c, carrier I (child_index x c).
 
 (* We claim that equality in T satisfies the following spec: *)
 Definition Seq : spec := {|
   Data := {xy : Data S * Data S &
     children_for (fst xy) * children_for (snd xy) * (fst xy = snd xy)};
   Children := fun '(existT _ (_, y) _) => Children y;
-  Index := {i : Index S & T i * T i};
+  Index := {i : Index S & carrier I i * carrier I i};
   index := fun '(existT _ (x, y) (children1, children2, p)) =>
     existT _ (index y)
-    (sup y (eq_rect x children_for children1 y p), sup y children2);
+    (sup I y (eq_rect x children_for children1 y p), sup I y children2);
   child_index := fun '(existT _ (x, y) (children1, children2, p)) c =>
     existT _ _ ((eq_rect x children_for children1 y p) c, children2 c);
 |}.
@@ -56,7 +49,7 @@ Definition eq_sup
   : forall dat : Data Seq, (forall c, eq_type (child_index dat c)) ->
     eq_type (index dat)
   := fun '(existT _ (x, y) (children1, children2, p)) children_eq =>
-     f_equal (sup y) (funext children_eq).
+     f_equal (sup I y) (funext children_eq).
 Definition Ieq : impl Seq := Build_impl Seq eq_type eq_sup.
 
 (* Now we prove that we have the induction rule, and that it computes. *)
@@ -67,18 +60,18 @@ Context
         P (index dat) (eq_sup dat children_eq)).
 
 (* First we show that P holds for reflexivity *)
-Fixpoint eq_induct_refl i a : P (existT _ i (a, a)) eq_refl
-  := match a with
-     | concrete.IWsup x children => eq_rect
+Definition eq_induct_refl : forall i a, P (existT _ i (a, a)) eq_refl
+  := induct satSI (fun i a => P (existT _ i (a, a)) eq_refl)
+     (fun x children refl_children_P => eq_rect
       (funext (fun c => eq_refl))
       (fun p' =>
-       P (existT _ (index x) (sup x children, sup x children))
-       (f_equal (sup x) p'))
-      (IS (existT _ (x, x) (children, children, eq_refl)) (happly eq_refl)
-       (fun c => eq_induct_refl _ (children c)))
+       P (existT _ (index x) (sup I x children, sup I x children))
+       (f_equal (sup I x) p'))
+      (IS (existT _ (x, x) (children, children, eq_refl)) (fun c => eq_refl)
+       refl_children_P)
       eq_refl
-      (funext_comp eq_refl)
-     end.
+      (funext_comp eq_refl)).
+
 (* Then we use path induction to generalize. *)
 Definition eq_induct
   : forall iab p, P iab p
@@ -93,12 +86,12 @@ Definition eq_induct
 Definition eq_induct_refl_computes
   x y children1 (p : x = y)
   : let children1' := eq_rect x children_for children1 y p in
-    eq_induct_refl (index y) (sup y children1') =
+    eq_induct_refl (index y) (sup I y children1') =
     eq_rect (funext (fun c => eq_refl)) _
       (IS (existT _ (x, y) (children1, children1', p)) (fun c => eq_refl)
        (fun c => eq_induct_refl _ (children1' c)))
       eq_refl (funext_comp eq_refl)
-  := match p in (_ = y) with eq_refl => eq_refl end.
+  := match p in (_ = y) with eq_refl => induct_computes satSI _ _ _ _ end.
 
 (* Then in general *)
 Definition eq_induct_computes
@@ -112,17 +105,17 @@ Definition eq_induct_computes
      (match funext children_eq
       as p' in (_ = children2)
       return
-        match f_equal (sup y) p' as p'' in (_ = b)
-        return P (existT _ (index y) (sup y children1', b)) p''
-        with eq_refl => eq_induct_refl (index y) (sup y children1') end
+        match f_equal (sup I y) p' as p'' in (_ = b)
+        return P (existT _ (index y) (sup I y children1', b)) p''
+        with eq_refl => eq_induct_refl (index y) (sup I y children1') end
         =
         eq_rect (funext (happly p'))
-        (fun p'' => P (existT _ _ (_, _)) (f_equal (sup y) p''))
+        (fun p'' => P (existT _ _ (_, _)) (f_equal (sup I y) p''))
         (IS (existT _ (x, y) (children1, children2, p)) (happly p')
          (fun c => eq_induct (existT _ _ (_, _)) (happly p' c)))
         p' (funext_comp p')
-        :> P (existT _ (index y) (sup y children1', sup y children2))
-           (f_equal (sup y) p')
+        :> P (existT _ (index y) (sup I y children1', sup I y children2))
+           (f_equal (sup I y) p')
       with eq_refl => eq_induct_refl_computes x y children1 p
       end)
      (f_equal (eq_rect _ _ _ _) (funext_adjoint children_eq)))
@@ -139,3 +132,8 @@ Definition eq_sat : sat Seq Ieq
   := Build_sat Seq Ieq eq_induct eq_induct_computes.
 
 End IWEquality.
+Arguments children_for {S} I x.
+Arguments Seq {S} I.
+Arguments eq_type {S} I.
+Arguments eq_sup {FunExt S I} dat children.
+Arguments Ieq {FunExt S} I.
