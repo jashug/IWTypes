@@ -5,4 +5,5 @@ IWType.v
 SigmaEta.v
 ReduceIWtoW.v
 CharacterizeIWEquality.v
+FiberEquiv.v
 
