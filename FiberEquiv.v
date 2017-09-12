@@ -38,48 +38,37 @@ Definition deconstruct_contract
      match p with eq_refl => match px with eq_refl =>
        deconstruct_computes x' children'
      end end.
+(*
+To prove something for all destructions of (sup I x children), it is enough
+to prove it for (x, children) with reflexive paths.
+This is basically the judgemental computation rule.
+*)
+Definition deconstruct_type_rect x children
+  (P : deconstruct_type (index x) (sup I x children) -> Type)
+  (IS : P (existT _ (existT _ x (children, eq_refl)) eq_refl))
+  : forall d, P d
+  := fun d => eq_rect _ P IS d (eq_trans
+       (eq_sym (deconstruct_computes x children))
+       (deconstruct_contract _ _ d)).
+Definition deconstruct_type_rect_computes x children P IS
+  : deconstruct_type_rect x children P IS
+    (existT _ (existT _ x (children, eq_refl)) eq_refl) =
+    IS
+  := f_equal _ (eq_trans_sym_inv_l (deconstruct_computes x children)).
 
 (* Take a node with index i and make an element of the fiber of i. *)
 Definition data_from_deconstruct i a
   : deconstruct_type i a -> fib (@index S) i
   := fun '(existT _ (existT _ x (_, p)) _) => existT _ x p.
-Definition data_part : forall i, carrier I i -> fib (@index S) i
-  := fun i a => data_from_deconstruct i a (deconstruct i a).
-Definition data_part_computes x children
-  : data_part _ (sup I x children) = existT _ x eq_refl
-  := f_equal (data_from_deconstruct _ _) (deconstruct_computes x children).
-Definition data_part_unique x children
-  : forall dx,
-    data_from_deconstruct _ (sup I x children) dx =
-    data_part _ (sup I x children)
-  := fun '(existT _ (existT _ x' (children', pi')) p') =>
-     match p' in (_ = a) return _ = data_part _ a
-     with eq_refl =>
-       match pi' return existT _ x' pi' = data_part _ (eq_rect _ _ _ _ pi')
-       with eq_refl => eq_sym (data_part_computes x' children') end
-     end.
-Definition data_part_computes' x children dx
-  : data_from_deconstruct _ (sup I x children) dx = existT _ x eq_refl
-  := eq_trans (data_part_unique x children dx) (data_part_computes x children).
-Definition simplify_data_part_computes x children1 children2
-  : eq_trans
-    (eq_trans
-     (eq_sym (data_part_computes x children1))
-     (data_part_computes x children1))
-    (eq_sym (eq_trans
-     (eq_sym (data_part_computes x children2))
-     (data_part_computes x children2)))
-     =
-    eq_refl
-  := f_equal2 (fun p1 p2 => eq_trans p1 (eq_sym p2))
-     (eq_trans_sym_inv_l _) (eq_trans_sym_inv_l _).
 
 (* Define the forward and reverse functions, and prove they are inverses. *)
 Definition fib_to_eq_rect
   (P : forall i a b, deconstruct_type i a -> deconstruct_type i b ->
        fib (@index (Seq I)) (existT _ i (a, b)) -> Type)
-  (IS : forall x children1 children2 da db,
-        P (index x) (sup I x children1) (sup I x children2) da db
+  (IS : forall x children1 children2,
+        P (index x) (sup I x children1) (sup I x children2)
+        (existT _ (existT _ x (children1, eq_refl)) eq_refl)
+        (existT _ (existT _ x (children2, eq_refl)) eq_refl)
         (existT _ (existT _ x (children1, children2)) eq_refl))
   : forall i a b da db fx, P i a b da db fx
   := fun i a b da db '(existT _ dat index_eq) =>
@@ -91,18 +80,28 @@ Definition fib_to_eq_rect
          forall da db,
          P i a b da db (existT _ (existT _ x (children1, children2)) index_eq)
        with eq_refl =>
-         fun da db => IS x children1 children2 da db
+         (deconstruct_type_rect x children1 _
+         (deconstruct_type_rect x children2 _
+          (IS x children1 children2)))
        end
      end index_eq da db.
+Definition fib_to_eq_rect_computes P IS x children1 children2
+  (da := existT _ (existT _ x (children1, eq_refl)) eq_refl
+   : deconstruct_type _ (sup I x children1))
+  (db := existT _ (existT _ x (children2, eq_refl)) eq_refl)
+  (fx := existT _ (existT _ x (children1, children2)) eq_refl)
+  : fib_to_eq_rect P IS _ (sup I x children1) (sup I x children2) da db fx =
+    IS x children1 children2
+  := eq_trans (x:=fib_to_eq_rect P IS _ _ _ da db fx)
+       (f_equal (fun f => f db)
+        (deconstruct_type_rect_computes x children1 _ _))
+       (deconstruct_type_rect_computes x children2 _ _).
 Definition fib_to_eq_parametrized
   : forall i (a b : carrier I i) da db,
     fib (@index (Seq I)) (existT _ i (a, b)) ->
     data_from_deconstruct i a da = data_from_deconstruct i b db
     :> fib (@index S) i
-  := fib_to_eq_rect _
-     (fun x children1 children2 da db => eq_trans
-      (data_part_computes' x children1 da)
-      (eq_sym (data_part_computes' x children2 db))).
+  := fib_to_eq_rect _ (fun x children1 children2 => eq_refl).
 
 Definition eq_to_fib_rect
   (P : forall i a b da db,
@@ -149,15 +148,7 @@ Definition eq_to_fib_to_eq_id_parametrized
     data_eq
   := eq_to_fib_rect _
      (fun x children1 children2 =>
-      simplify_data_part_computes x children1 children2).
-
-Definition deconstruct_type_rect x children
-  (P : deconstruct_type (index x) (sup I x children) -> Type)
-  (IS : P (existT _ (existT _ x (children, eq_refl)) eq_refl))
-  : forall d, P d
-  := fun d => eq_rect _ P IS d (eq_trans
-       (eq_sym (deconstruct_computes x children))
-       (deconstruct_contract _ _ d)).
+      fib_to_eq_rect_computes _ _ x children1 children2).
 
 Definition fib_to_eq_to_fib_id_parametrized
   : forall i a b da db fx,
@@ -166,10 +157,8 @@ Definition fib_to_eq_to_fib_id_parametrized
     fx
   := fib_to_eq_rect _
      (fun x children1 children2 =>
-      (deconstruct_type_rect x children1 (fun da => forall db, _)
-       (deconstruct_type_rect x children2 (fun db => _)
-        (f_equal (fun p => _ p)
-         (simplify_data_part_computes x children1 children2))))).
+      (f_equal (eq_to_fib_parametrized _ _ _ _ _)
+       (fib_to_eq_rect_computes _ _ x children1 children2))).
 End inner.
 End inner.
 
@@ -177,13 +166,16 @@ End inner.
 Section fibers.
 Context {S : spec} (I : impl S).
 
+Definition data_part : forall i, carrier I i -> fib (@index S) i
+  := fun i a => data_from_deconstruct I i a (deconstruct I i a).
+
 Definition fib_to_eq i (a b : carrier I i)
   : fib (@index (Seq I)) (existT _ i (a, b)) ->
-    data_part I i a = data_part I i b :> fib (@index S) i
+    data_part i a = data_part i b :> fib (@index S) i
   := fib_to_eq_parametrized I i a b _ _.
 
 Definition eq_to_fib i (a b : carrier I i)
-  : data_part I i a = data_part I i b :> fib (@index S) i ->
+  : data_part i a = data_part i b :> fib (@index S) i ->
     fib (@index (Seq I)) (existT _ i (a, b))
   := eq_to_fib_parametrized I i a b _ _.
 
