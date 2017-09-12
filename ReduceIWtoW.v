@@ -58,7 +58,6 @@ Definition sup' (x : Data S) (children : forall c, carrier' (child_index x c))
   := existT (well_formed (index x))
      (sup x (fun c => projT1 (children c)))
      (eq_refl, fun c => projT2 (children c)).
-Definition I' : impl S := Build_impl S carrier' sup'.
 
 (* Define the induction principle and show it computes. *)
 Section induct'.
@@ -108,7 +107,7 @@ End induct'.
 Thus we have constructed an implementation of the Indexed W type S
 from the non-indexed W type tree.
 *)
-Definition sat' : sat S I'
-  := Build_sat S I' induct' induct_computes'.
+Definition I' : impl S
+  := Build_impl S carrier' sup' induct' induct_computes'.
 
 End IW_to_W.

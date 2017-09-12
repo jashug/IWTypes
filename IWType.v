@@ -14,12 +14,10 @@ index : Data -> Index
 child_index : forall x : Data, Children x -> Index
   Child c : Children x is labeled (child_index x c)
 
-The Indexed W type is then a type family carrier : Index -> Type,
+The Indexed W type is a type family carrier : Index -> Type,
 along with a constructor
 sup : forall x : Data, (forall c : Children x, carrier (child_index x c)) ->
       carrier (index x)
-.
-
 We then require sup to satisfy an appropriate dependent induction principle.
 
 Note that regular W types are a subset of Indexed W types, obtained by
@@ -47,37 +45,33 @@ Record impl {S : spec} := {
     forall x : Data S,
     (forall (c : Children x), carrier (child_index x c)) ->
     carrier (index x);
-}.
-Arguments impl S : clear implicits.
-
-Record sat {S : spec} {I : impl S} := {
   induct :
-    forall (P : forall i, carrier I i -> Type),
+    forall (P : forall i, carrier i -> Type),
     (forall x children, (forall c, P _ (children c)) ->
-     P _ (sup I x children)) ->
+     P _ (sup x children)) ->
     forall i m, P i m;
   induct_computes :
     forall P IS,
     forall x children,
-    induct P IS _ (sup I x children) =
+    induct P IS _ (sup x children) =
     IS x children (fun c => induct P IS _ (children c));
 }.
-Arguments sat S I : clear implicits.
+Arguments impl S : clear implicits.
 
 Module unique.
 Section unique.
 (* We prove that the implementation of a spec is unique up to equivalence. *)
 
 Context {FunExt : FunExt}.
-Context {S} {I1 I2} (sat1 : sat S I1) (sat2 : sat S I2).
+Context {S} {I1 I2 : impl S}.
 
 Definition I1_to_I2 : forall i, carrier I1 i -> carrier I2 i
-  := induct sat1
+  := induct I1
      (fun i _ => carrier I2 i)
      (fun x children IH => sup I2 x IH).
 
 Definition I2_to_I1 : forall i, carrier I2 i -> carrier I1 i
-  := induct sat2
+  := induct I2
      (fun i _ => carrier I1 i)
      (fun x children IH => sup I1 x IH).
 
@@ -85,17 +79,17 @@ Definition I1_to_I2_sup
   : forall x children,
     I1_to_I2 _ (sup I1 x children) =
     sup I2 x (fun c => I1_to_I2 _ (children c))
-  := induct_computes sat1 _ _.
+  := induct_computes I1 _ _.
 
 Definition I2_to_I1_sup
   : forall x children,
     I2_to_I1 _ (sup I2 x children) =
     sup I1 x (fun c => I2_to_I1 _ (children c))
-  := induct_computes sat2 _ _.
+  := induct_computes I2 _ _.
 
 Definition I1_to_I2_to_I1_id
   : forall i m, I2_to_I1 i (I1_to_I2 i m) = m
-  := induct sat1
+  := induct I1
      (fun i m => I2_to_I1 i (I1_to_I2 i m) = m)
      (fun x children IH => eq_trans (eq_trans
       (f_equal (I2_to_I1 _) (I1_to_I2_sup _ _))
@@ -131,13 +125,13 @@ Definition IWcomputes P IS x children
   : IWinduct P IS _ (IWsup x children) =
     IS x children (fun c => IWinduct P IS _ (children c))
   := eq_refl.
-Definition Wsat : sat S {| carrier := IW; sup := IWsup |}
-  := Build_sat S {| carrier := IW; sup := IWsup |} IWinduct IWcomputes.
+Definition IWsat : impl S
+  := Build_impl S IW IWsup IWinduct IWcomputes.
 
 (*
 With the above module unique,
 this shows that every spec has a unique implementation.
-With univalence, you should have that {I : impl S & sat S I} is contractable,
+With univalence, you probably have that {I : impl S & sat S I} is contractable,
 assuming that coherence of induct_computes doesn't mess things up.
 *)
 

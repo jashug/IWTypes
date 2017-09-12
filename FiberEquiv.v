@@ -13,7 +13,7 @@ Definition fib {A B} (f : A -> B) (b : B) := {a : A & f a = b}.
 
 Module Import inner.
 Section inner.
-Context {S : spec} {I : impl S} (satSI : sat S I).
+Context {S : spec} (I : impl S).
 
 (*
 Since we are working with an arbitrary implementation, we don't have
@@ -24,13 +24,13 @@ Definition deconstruct_type i (a : carrier I i)
       eq_rect _ _ (sup I _ (fst (projT2 a'))) i (snd (projT2 a')) = a}.
 Definition deconstruct
   : forall i a, deconstruct_type i a
-  := induct satSI deconstruct_type
+  := induct I deconstruct_type
      (fun x children _ => existT _ (existT _ x (children, eq_refl)) eq_refl).
 Definition deconstruct_computes
   : forall x children,
     deconstruct _ (sup I x children) =
     existT _ (existT _ x (children, eq_refl)) eq_refl
-  := induct_computes satSI _ _.
+  := induct_computes I _ _.
 Definition deconstruct_contract
   : forall i a (d : deconstruct_type i a),
     deconstruct i a = d
@@ -175,23 +175,23 @@ End inner.
 
 (* By specializing the above, we get the desired inverses. *)
 Section fibers.
-Context {S : spec} {I : impl S} (satSI : sat S I).
+Context {S : spec} (I : impl S).
 
 Definition fib_to_eq i (a b : carrier I i)
   : fib (@index (Seq I)) (existT _ i (a, b)) ->
-    data_part satSI i a = data_part satSI i b :> fib (@index S) i
-  := fib_to_eq_parametrized satSI i a b _ _.
+    data_part I i a = data_part I i b :> fib (@index S) i
+  := fib_to_eq_parametrized I i a b _ _.
 
 Definition eq_to_fib i (a b : carrier I i)
-  : data_part satSI i a = data_part satSI i b :> fib (@index S) i ->
+  : data_part I i a = data_part I i b :> fib (@index S) i ->
     fib (@index (Seq I)) (existT _ i (a, b))
-  := eq_to_fib_parametrized (I:=I) i a b _ _.
+  := eq_to_fib_parametrized I i a b _ _.
 
 Definition fib_to_eq_to_fib_id i a b
   : forall fx, eq_to_fib i a b (fib_to_eq i a b fx) = fx
-  := fib_to_eq_to_fib_id_parametrized satSI i a b _ _.
+  := fib_to_eq_to_fib_id_parametrized I i a b _ _.
 
 Definition eq_to_fib_to_eq_id i a b
   : forall data_eq, fib_to_eq i a b (eq_to_fib i a b data_eq) = data_eq
-  := eq_to_fib_to_eq_id_parametrized satSI i a b _ _.
+  := eq_to_fib_to_eq_id_parametrized I i a b _ _.
 End fibers.

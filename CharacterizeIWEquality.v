@@ -23,7 +23,7 @@ Context {FunExt : FunExt}.
 Context {S : spec}.
 
 (* Postulate an implementation I of S *)
-Context {I : impl S} (satSI : sat S I).
+Context (I : impl S).
 
 (* Define the type of children of a node labeled by x *)
 Definition children_for (x : Data S) := forall c, carrier I (child_index x c).
@@ -48,7 +48,6 @@ Definition eq_sup
     eq_type (index dat)
   := fun '(existT _ x (children1, children2)) children_eq =>
      f_equal (sup I x) (funext children_eq).
-Definition Ieq : impl Seq := Build_impl Seq eq_type eq_sup.
 
 (* Now we prove that we have the induction rule, and that it computes. *)
 Section induct.
@@ -59,7 +58,7 @@ Context
 
 (* First we show that P holds for reflexivity *)
 Definition eq_induct_refl : forall i a, P (existT _ i (a, a)) eq_refl
-  := induct satSI (fun i a => P (existT _ i (a, a)) eq_refl)
+  := induct I (fun i a => P (existT _ i (a, a)) eq_refl)
      (fun x children refl_children_P => eq_rect
       (funext (happly eq_refl))
       (fun p' =>
@@ -86,7 +85,7 @@ Definition eq_induct_refl_computes
       (IS (existT _ x (children1, children1)) (happly eq_refl)
        (fun c => eq_induct_refl _ (children1 c)))
       eq_refl (funext_comp eq_refl)
-  := induct_computes satSI _ _ _ _.
+  := induct_computes I _ _ _ _.
 
 (* Then in general *)
 Definition eq_induct_computes
@@ -120,12 +119,8 @@ Definition eq_induct_computes
 End induct.
 
 (* Thus the equality is an inductive family: *)
-Definition eq_sat : sat Seq Ieq
-  := Build_sat Seq Ieq eq_induct eq_induct_computes.
+Definition Ieq : impl Seq
+  := Build_impl Seq eq_type eq_sup eq_induct eq_induct_computes.
 
 End IWEquality.
-Arguments children_for {S} I x.
-Arguments Seq {S} I.
-Arguments eq_type {S} I.
 Arguments eq_sup {FunExt S I} dat children.
-Arguments Ieq {FunExt S} I.

@@ -3,7 +3,7 @@ For some properties, if they hold for all the fibers of the index map,
 then they hold for the Indexed W type.
 We assume function extensionality throughout.
 
-We also work with the concrete inductive implementation IW, since
+We work with the concrete inductive implementation IW, since
 it has nice judgemental equalities. Since all implementations are equivalent,
 the results hold for any implementation.
 
