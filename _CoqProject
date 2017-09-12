@@ -6,4 +6,6 @@ SigmaEta.v
 ReduceIWtoW.v
 CharacterizeIWEquality.v
 FiberEquiv.v
+Eqdep_dec.v
+FiberProperties.v
 
