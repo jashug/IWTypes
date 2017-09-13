@@ -131,8 +131,7 @@ Definition IWsat : impl S
 (*
 With the above module unique,
 this shows that every spec has a unique implementation.
-With univalence, you probably have that {I : impl S & sat S I} is contractable,
-assuming that coherence of induct_computes doesn't mess things up.
+With univalence, you probably have that impl S is contractable.
 *)
 
 End concrete.
